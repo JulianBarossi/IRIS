@@ -1,0 +1,62 @@
+/**
+ * These arguments were used when this file was generated. They will be automatically applied on subsequent loads
+ * via the GUI or CLI. Run CLI with '--help' for additional information on how to override these arguments.
+ * @cliArgs --device "MSPM0G350X" --part "Default" --package "LQFP-64(PM)" --product "mspm0_sdk@2.09.00.00"
+ * @v2CliArgs --device "MSPM0G3507" --package "LQFP-64(PM)" --product "mspm0_sdk@2.09.00.00"
+ * @versions {"tool":"1.26.0+4407"}
+ */
+
+/**
+ * Import the modules used in this configuration.
+ */
+const ADC12  = scripting.addModule("/ti/driverlib/ADC12", {}, false);
+const ADC121 = ADC12.addInstance();
+const GPIO   = scripting.addModule("/ti/driverlib/GPIO", {}, false);
+const GPIO1  = GPIO.addInstance();
+const SYSCTL = scripting.addModule("/ti/driverlib/SYSCTL");
+const VREF   = scripting.addModule("/ti/driverlib/VREF");
+
+/**
+ * Write custom configuration values to the imported modules.
+ */
+ADC121.$name                 = "ADC12_0";
+ADC121.samplingOperationMode = "sequence";
+ADC121.endAdd                = 3;
+ADC121.adcMem2chansel        = "DL_ADC12_INPUT_CHAN_2";
+ADC121.adcMem3chansel        = "DL_ADC12_INPUT_CHAN_3";
+ADC121.enabledInterrupts     = ["DL_ADC12_INTERRUPT_MEM3_RESULT_LOADED"];
+ADC121.adcMem0chansel        = "DL_ADC12_INPUT_CHAN_6";
+ADC121.adcMem1chansel        = "DL_ADC12_INPUT_CHAN_5";
+ADC121.adcPin2Config.$name   = "ti_driverlib_gpio_GPIOPinGeneric3";
+ADC121.adcPin3Config.$name   = "ti_driverlib_gpio_GPIOPinGeneric4";
+ADC121.adcPin6Config.$name   = "ti_driverlib_gpio_GPIOPinGeneric0";
+ADC121.adcPin5Config.$name   = "ti_driverlib_gpio_GPIOPinGeneric2";
+
+const Board = scripting.addModule("/ti/driverlib/Board", {}, false);
+
+GPIO1.$name                               = "GPIO_GRP_0";
+GPIO1.associatedPins[0].launchPadShortcut = "LED1En";
+GPIO1.associatedPins[0].$name             = "USER_LED_1";
+
+SYSCTL.forceDefaultClkConfig = true;
+
+VREF.basicIntVolt           = "DL_VREF_BUFCONFIG_OUTPUT_2_5V";
+VREF.vrefPosPinConfig.$name = "ti_driverlib_gpio_GPIOPinGeneric1";
+
+/**
+ * Pinmux solution for unlocked pins/peripherals. This ensures that minor changes to the automatic solver in a future
+ * version of the tool will not impact the pinmux you originally saw.  These lines can be completely deleted in order to
+ * re-solve from scratch.
+ */
+ADC121.peripheral.$suggestSolution           = "ADC1";
+ADC121.peripheral.adcPin6.$suggestSolution   = "PB19";
+ADC121.peripheral.adcPin5.$suggestSolution   = "PB18";
+ADC121.peripheral.adcPin2.$suggestSolution   = "PA17";
+ADC121.peripheral.adcPin3.$suggestSolution   = "PA18";
+Board.peripheral.$suggestSolution            = "DEBUGSS";
+Board.peripheral.swclkPin.$suggestSolution   = "PA20";
+Board.peripheral.swdioPin.$suggestSolution   = "PA19";
+GPIO1.associatedPins[0].pin.$suggestSolution = "PA0";
+SYSCTL.peripheral.$suggestSolution           = "SYSCTL";
+VREF.peripheral.$suggestSolution             = "VREF";
+VREF.peripheral.vrefPosPin.$suggestSolution  = "PA23";
