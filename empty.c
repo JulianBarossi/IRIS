@@ -186,10 +186,10 @@ void servoMoveTilt(uint16_t angle)
     uint16_t position = angleToSTSPosition(angle);
     stsWritePosition(TILT_SERVO_ID, position, SERVO_MOVE_TIME, SERVO_MOVE_SPEED);
 }
-// void delayServoSettle(void)
-// {
-//     delay_cycles(SERVO_SETTLE_CYCLES);
-// }
+void delayServoSettle(void)
+{
+    delay_cycles(SERVO_SETTLE_CYCLES);
+}
 
 /* 
    ADC Read Function
