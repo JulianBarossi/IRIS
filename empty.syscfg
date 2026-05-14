@@ -14,6 +14,8 @@ const ADC121 = ADC12.addInstance();
 const GPIO   = scripting.addModule("/ti/driverlib/GPIO", {}, false);
 const GPIO1  = GPIO.addInstance();
 const SYSCTL = scripting.addModule("/ti/driverlib/SYSCTL");
+const UART   = scripting.addModule("/ti/driverlib/UART", {}, false);
+const UART1  = UART.addInstance();
 const VREF   = scripting.addModule("/ti/driverlib/VREF");
 
 /**
@@ -40,6 +42,18 @@ GPIO1.associatedPins[0].$name             = "USER_LED_1";
 
 SYSCTL.forceDefaultClkConfig = true;
 
+UART1.$name                    = "UART_0";
+UART1.enableFIFO               = true;
+UART1.enableDMARX              = false;
+UART1.enableDMATX              = false;
+UART1.rxFifoThreshold          = "DL_UART_RX_FIFO_LEVEL_ONE_ENTRY";
+UART1.targetBaudRate           = 1000000;
+UART1.enableInternalLoopback   = false;
+UART1.txPinConfig.$name        = "ti_driverlib_gpio_GPIOPinGeneric5";
+UART1.txPinConfig.enableConfig = true;
+UART1.rxPinConfig.$name        = "ti_driverlib_gpio_GPIOPinGeneric6";
+UART1.rxPinConfig.enableConfig = true;
+
 VREF.basicIntVolt           = "DL_VREF_BUFCONFIG_OUTPUT_2_5V";
 VREF.vrefPosPinConfig.$name = "ti_driverlib_gpio_GPIOPinGeneric1";
 
@@ -58,5 +72,8 @@ Board.peripheral.swclkPin.$suggestSolution   = "PA20";
 Board.peripheral.swdioPin.$suggestSolution   = "PA19";
 GPIO1.associatedPins[0].pin.$suggestSolution = "PA0";
 SYSCTL.peripheral.$suggestSolution           = "SYSCTL";
+UART1.peripheral.$suggestSolution            = "UART0";
+UART1.peripheral.rxPin.$suggestSolution      = "PA1";
+UART1.peripheral.txPin.$suggestSolution      = "PA10";
 VREF.peripheral.$suggestSolution             = "VREF";
 VREF.peripheral.vrefPosPin.$suggestSolution  = "PA23";
