@@ -9,43 +9,45 @@ volatile uint16_t sRight = 0;
 volatile uint16_t sDown = 0;
 volatile uint16_t sLeft = 0;
 
-//scan settings
-#define PAN_MIN_ANGLE      0
-#define PAN_MAX_ANGLE      180
-#define PAN_STEP_ANGLE     5
 
-#define TILT_MIN_ANGLE     30
-#define TILT_MAX_ANGLE     150
-#define TILT_STEP_ANGLE    5
+#define PAN_POS_MIN     1024
+#define PAN_POS_MAX     3072
+#define PAN_POS_CENTER  2048
 
-#define SIGNAL_THRESHOLD   500U
-#define SERVO_SETTLE_CYCLES  800000U
+#define TILT_POS_MIN    2100   // vertical (looking up)
+#define TILT_POS_MAX    3000   // horizontal (looking forward)
+#define TILT_POS_CENTER 2550   // midway
 
-//servo globals
+// approximately 10 degrees
+#define PAN_STEP        120
+#define TILT_STEP       120
+
+/* Scan settling: how long to wait after commanding a move before sampling.
+ * Tune until the servo is consistently arrived before the ADC reads. */
+#define SERVO_SETTLE_CYCLES  5000000U
+
+/* Threshold for "we saw something" at coarse-scan resolution */
+#define SIGNAL_THRESHOLD     500U
+
+
+// servo protocol
 #define PAN_SERVO_ID    1
 #define TILT_SERVO_ID   2
 
 #define STS_HEADER      0xFF
 #define STS_INST_WRITE  0x03
-
 #define STS_ADDR_GOAL_POSITION  0x2A
-#define STS_ADDR_GOAL_TIME      0x2C
-#define STS_ADDR_GOAL_SPEED     0x2E
 
-#define SERVO_POS_MIN   0
-#define SERVO_POS_MAX   4095
+#define SERVO_MOVE_TIME  100000   // ms per move during coarse scan
+#define SERVO_MOVE_SPEED 0      // 0, let time dictate movement
 
-#define SERVO_MOVE_TIME  500
-#define SERVO_MOVE_SPEED 500
+// pid
+#define TRACK_TICK_MS           20
+#define TRACK_TIMEOUT_TICKS     500
+#define ON_TARGET_ERR           40
+#define ON_TARGET_HOLD_TICKS    10
+#define LOST_TOTAL_THRESHOLD    200U
 
-
-#define TRACK_TICK_MS           20      // ~50Hz fine loop
-#define TRACK_TIMEOUT_TICKS     500     // 10s max in fine tracking
-#define ON_TARGET_ERR           40      // raw ADC counts
-#define ON_TARGET_HOLD_TICKS    10      
-#define LOST_TOTAL_THRESHOLD    300U    
-
-//PID
 #define PAN_KP    0.05f
 #define PAN_KI    0.001f
 #define PAN_KD    0.02f
@@ -54,11 +56,12 @@ volatile uint16_t sLeft = 0;
 #define TILT_KI   0.001f
 #define TILT_KD   0.02f
 
-#define I_CLAMP   200.0f
-#define STEP_CLAMP 50    // max servo units to move per tick
+#define I_CLAMP    200.0f
+#define STEP_CLAMP 50
 
-static int32_t panPosRaw  = 0;
-static int32_t tiltPosRaw = 0;
+
+static int32_t panPosRaw  = PAN_POS_CENTER;
+static int32_t tiltPosRaw = TILT_POS_CENTER;
 
 typedef struct
 {
@@ -70,24 +73,18 @@ typedef struct
 static PID panPID  = { PAN_KP,  PAN_KI,  PAN_KD,  0.0f, 0.0f };
 static PID tiltPID = { TILT_KP, TILT_KI, TILT_KD, 0.0f, 0.0f };
 
-
 typedef struct
 {
-    uint16_t bestPanAngle;
-    uint16_t bestTiltAngle;
+    uint16_t bestPanPos;       
+    uint16_t bestTiltPos;
     uint32_t bestSignal;
-    int32_t horizontalError;
-    int32_t verticalError;
-    bool beaconFound;
+    int32_t  horizontalError;
+    int32_t  verticalError;
+    bool     beaconFound;
 } ScanResult;
 
 
-uint16_t angleToSTSPosition(uint16_t angle)
-{
-    if (angle > 360) angle = 360;
-    return (uint16_t)(((uint32_t)angle * SERVO_POS_MAX) / 360U);
-}
-
+//uart and packet functions
 uint8_t stsChecksum(uint8_t *packet, uint8_t length)
 {
     uint16_t sum = 0;
@@ -97,8 +94,8 @@ uint8_t stsChecksum(uint8_t *packet, uint8_t length)
 
 void uartSendByte(uint8_t data)
 {
-    while (DL_UART_Main_isTXFIFOFull(UART0)) { }
-    DL_UART_Main_transmitData(UART0, data);
+    while (DL_UART_Main_isTXFIFOFull(UART1)) { }
+    DL_UART_Main_transmitData(UART1, data);
 }
 
 void uartSendPacket(uint8_t *packet, uint8_t length)
@@ -125,50 +122,56 @@ void stsWritePosition(uint8_t id, uint16_t position, uint16_t time, uint16_t spe
     uartSendPacket(packet, 13);
 }
 
-void servoMovePan(uint16_t angle)
+// make sure servo position is within bounds
+static int32_t clampPan(int32_t pos)
 {
-    uint16_t position = angleToSTSPosition(angle);
-    panPosRaw = position;
-    stsWritePosition(PAN_SERVO_ID, position, SERVO_MOVE_TIME, SERVO_MOVE_SPEED);
+    if (pos < PAN_POS_MIN) return PAN_POS_MIN;
+    if (pos > PAN_POS_MAX) return PAN_POS_MAX;
+    return pos;
 }
 
-void servoMoveTilt(uint16_t angle)
+static int32_t clampTilt(int32_t pos)
 {
-    uint16_t position = angleToSTSPosition(angle);
-    tiltPosRaw = position;
-    stsWritePosition(TILT_SERVO_ID, position, SERVO_MOVE_TIME, SERVO_MOVE_SPEED);
+    if (pos < TILT_POS_MIN) return TILT_POS_MIN;
+    if (pos > TILT_POS_MAX) return TILT_POS_MAX;
+    return pos;
 }
 
-// pan servo with raw units
+// move servo
+void servoMovePan(int32_t pos)
+{
+    pos = clampPan(pos);
+    panPosRaw = pos;
+    stsWritePosition(PAN_SERVO_ID, (uint16_t)pos, SERVO_MOVE_TIME, SERVO_MOVE_SPEED);
+}
+
+void servoMoveTilt(int32_t pos)
+{
+    pos = clampTilt(pos);
+    tiltPosRaw = pos;
+    stsWritePosition(TILT_SERVO_ID, (uint16_t)pos, SERVO_MOVE_TIME, SERVO_MOVE_SPEED);
+}
+
+// shorter move time for fine tracking
 void servoMovePanRaw(int32_t pos)
 {
-    if (pos < SERVO_POS_MIN) pos = SERVO_POS_MIN;
-    if (pos > SERVO_POS_MAX) pos = SERVO_POS_MAX;
+    pos = clampPan(pos);
     panPosRaw = pos;
-    stsWritePosition(PAN_SERVO_ID, (uint16_t)pos, TRACK_TICK_MS, 0);
+    stsWritePosition(PAN_SERVO_ID, (uint16_t)pos, TRACK_TICK_MS, SERVO_MOVE_SPEED);
 }
 
-// tilt servo with raw units
 void servoMoveTiltRaw(int32_t pos)
 {
-    if (pos < SERVO_POS_MIN) pos = SERVO_POS_MIN;
-    if (pos > SERVO_POS_MAX) pos = SERVO_POS_MAX;
+    pos = clampTilt(pos);
     tiltPosRaw = pos;
-    stsWritePosition(TILT_SERVO_ID, (uint16_t)pos, TRACK_TICK_MS, 0);
+    stsWritePosition(TILT_SERVO_ID, (uint16_t)pos, TRACK_TICK_MS, SERVO_MOVE_SPEED);
 }
 
-void delayServoSettle(void)
-{
-    delay_cycles(SERVO_SETTLE_CYCLES);
-}
-
-// fine track tick, change value if needed
-void delayTrackTick(void)
-{
-    delay_cycles(SERVO_SETTLE_CYCLES);
-}
+void delayServoSettle(void) { delay_cycles(SERVO_SETTLE_CYCLES); }
+void delayTrackTick(void)   { delay_cycles(SERVO_SETTLE_CYCLES); }
 
 
+// ADC
 void readFourIRSensors(void)
 {
     gCheckADC = false;
@@ -180,47 +183,49 @@ void readFourIRSensors(void)
     sDown  = DL_ADC12_getMemResult(ADC12_0_INST, DL_ADC12_MEM_IDX_2);
     sLeft  = DL_ADC12_getMemResult(ADC12_0_INST, DL_ADC12_MEM_IDX_3);
 
+    DL_ADC12_disableConversions(ADC12_0_INST);  // <-- add this
     DL_ADC12_enableConversions(ADC12_0_INST);
 }
 
-
+// run scan
 ScanResult runScan(void)
 {
     ScanResult result = {
-        .bestPanAngle = PAN_MIN_ANGLE,
-        .bestTiltAngle = TILT_MIN_ANGLE,
+        .bestPanPos = PAN_POS_CENTER,
+        .bestTiltPos = TILT_POS_CENTER,
         .bestSignal = 0,
         .horizontalError = 0,
         .verticalError = 0,
         .beaconFound = false
     };
 
-    for (uint16_t tilt = TILT_MIN_ANGLE; tilt <= TILT_MAX_ANGLE; tilt += TILT_STEP_ANGLE)
+    for (int32_t tilt = TILT_POS_MIN; tilt <= TILT_POS_MAX; tilt += TILT_STEP)
     {
         servoMoveTilt(tilt);
         delayServoSettle();
 
-        for (uint16_t pan = PAN_MIN_ANGLE; pan <= PAN_MAX_ANGLE; pan += PAN_STEP_ANGLE)
+        for (int32_t pan = PAN_POS_MIN; pan <= PAN_POS_MAX; pan += PAN_STEP)
         {
             servoMovePan(pan);
             delayServoSettle();
 
             readFourIRSensors();
 
-            uint32_t totalSignal =
-                (4U * 4095U) -
-                ((uint32_t)sUp + (uint32_t)sRight + (uint32_t)sDown + (uint32_t)sLeft);
 
-            int32_t horizontalError = (int32_t)sLeft  - (int32_t)sRight;  /* sign flipped */
-            int32_t verticalError   = (int32_t)sDown  - (int32_t)sUp;     /* sign flipped */
+            /* totalSignal: just sum them up now, no inversion */
+            uint32_t totalSignal = sUp + sRight + sDown + sLeft;
+
+            /* Errors: now sRight HIGHER than sLeft means target on the right */
+            int32_t horizontalError = (int32_t)sRight - (int32_t)sLeft;
+            int32_t verticalError   = (int32_t)sUp    - (int32_t)sDown;
 
             if (totalSignal > result.bestSignal)
             {
                 result.bestSignal = totalSignal;
-                result.bestPanAngle = pan;
-                result.bestTiltAngle = tilt;
+                result.bestPanPos  = (uint16_t)pan;
+                result.bestTiltPos = (uint16_t)tilt;
                 result.horizontalError = horizontalError;
-                result.verticalError = verticalError;
+                result.verticalError   = verticalError;
             }
         }
     }
@@ -238,7 +243,6 @@ static float pidStep(PID *p, float err, float dt)
 
     float deriv = (dt > 0.0f) ? (err - p->prevErr) / dt : 0.0f;
     p->prevErr = err;
-
     return p->kp * err + p->ki * p->integral + p->kd * deriv;
 }
 
@@ -255,8 +259,6 @@ static int32_t clampStep(int32_t v)
     return v;
 }
 
-/* Fine-track: drive (right-left) and (up-down) errors to zero with PID.
- * Returns true on lock, false on lost/timeout (caller should re-scan). */
 bool fineTrack(void)
 {
     pidReset(&panPID);
@@ -270,23 +272,12 @@ bool fineTrack(void)
     {
         readFourIRSensors();
 
-        /* Signal strength (inverted ADC; see note above). */
-        uint32_t total =
-            (4U * 4095U) -
-            ((uint32_t)sUp + (uint32_t)sRight + (uint32_t)sDown + (uint32_t)sLeft);
+        uint32_t total = sUp + sRight + sDown + sLeft;  // no inversion
+        if (total < LOST_TOTAL_THRESHOLD) return false;
 
-        if (total < LOST_TOTAL_THRESHOLD)
-        {
-            return false;  /* lost the beacon, re-scan */
-        }
+        int32_t panErr  = (int32_t)sRight - (int32_t)sLeft;   // un-flipped
+        int32_t tiltErr = (int32_t)sUp    - (int32_t)sDown;   // un-flipped
 
-        /* Pair-difference errors. Signs flipped because lower ADC = brighter:
-         *   target on the right -> sRight LOWER than sLeft -> (sLeft - sRight) > 0
-         *   target above         -> sUp    LOWER than sDown -> (sDown - sUp)   > 0 */
-        int32_t panErr  = (int32_t)sLeft - (int32_t)sRight;
-        int32_t tiltErr = (int32_t)sDown - (int32_t)sUp;
-
-        /* PID -> raw servo delta */
         int32_t panU  = (int32_t)pidStep(&panPID,  (float)panErr,  dt);
         int32_t tiltU = (int32_t)pidStep(&tiltPID, (float)tiltErr, dt);
 
@@ -296,7 +287,6 @@ bool fineTrack(void)
         servoMovePanRaw(panPosRaw   + panU);
         servoMoveTiltRaw(tiltPosRaw + tiltU);
 
-        /* Lock detection with hold time */
         int32_t absPan  = panErr  < 0 ? -panErr  : panErr;
         int32_t absTilt = tiltErr < 0 ? -tiltErr : tiltErr;
 
@@ -313,8 +303,7 @@ bool fineTrack(void)
         delayTrackTick();
         totalTicks++;
     }
-
-    return false;  /* timed out without locking */
+    return false;
 }
 
 
@@ -322,36 +311,88 @@ int main(void)
 {
     SYSCFG_DL_init();
     NVIC_EnableIRQ(ADC12_0_INST_INT_IRQN);
-
+ 
+    const float dt = TRACK_TICK_MS / 1000.0f;
+ 
+    printf("\r\n=== IR PID Bench Test ===\r\n");
+    printf("Cols: U  D  L  R  | total | panErr tiltErr | panU tiltU | status\r\n");
+    printf("--------------------------------------------------------------------\r\n");
+ 
+    uint32_t tick = 0;
+ 
     while (1)
     {
-        ScanResult scan = runScan();
-
-        if (!scan.beaconFound)
-        {
-            /* Nothing seen in the whole sweep -- loop and try again. */
-            continue;
-        }
-
-        /* Move to the coarse best, then hand off to PID for precise pointing. */
-        servoMovePan(scan.bestPanAngle);
-        servoMoveTilt(scan.bestTiltAngle);
-        delayServoSettle();
-
-        if (fineTrack())
-        {
-            /* LOCKED. Bearing is in panPosRaw / tiltPosRaw (raw 0..4095).
-             * Hook for the rest of the system: flag the fire, log the angle,
-             * notify whoever's in charge of the next stage. */
-
-            /* Hold lock with a slower maintenance loop until we lose it. */
-            while (fineTrack()) { /* keep tracking */ }
-        }
-        /* Lost or timed out -> fall through, top of loop re-scans. */
+        readFourIRSensors();
+ 
+        /* Phototransistors: higher ADC = brighter IR (no inversion needed) */
+        uint32_t total = (uint32_t)sUp + (uint32_t)sRight +
+                         (uint32_t)sDown + (uint32_t)sLeft;
+ 
+        int32_t panErr  = (int32_t)sRight - (int32_t)sLeft;
+        int32_t tiltErr = (int32_t)sUp    - (int32_t)sDown;
+ 
+        bool seeBeacon = (total >= LOST_TOTAL_THRESHOLD);
+ 
+        float panU_f  = pidStep(&panPID,  (float)panErr,  dt);
+        float tiltU_f = pidStep(&tiltPID, (float)tiltErr, dt);
+ 
+        int32_t panU  = clampStep((int32_t)panU_f);
+        int32_t tiltU = clampStep((int32_t)tiltU_f);
+ 
+        const char *status;
+        if (!seeBeacon)                       status = "NO SIGNAL";
+        else if (panErr ==  0 && tiltErr == 0) status = "CENTERED";
+        else if (panErr  >  0 && tiltErr >  0) status = "target UP-RIGHT";
+        else if (panErr  >  0 && tiltErr <  0) status = "target DOWN-RIGHT";
+        else if (panErr  <  0 && tiltErr >  0) status = "target UP-LEFT";
+        else if (panErr  <  0 && tiltErr <  0) status = "target DOWN-LEFT";
+        else if (panErr  >  0)                 status = "target RIGHT";
+        else if (panErr  <  0)                 status = "target LEFT";
+        else if (tiltErr >  0)                 status = "target UP";
+        else                                   status = "target DOWN";
+ 
+        printf("[%5lu] %4u %4u %4u %4u | %5lu | %+5ld %+5ld | %+4ld %+4ld | %s\r\n",
+               (unsigned long)tick,
+               sUp, sDown, sLeft, sRight,
+               (unsigned long)total,
+               (long)panErr, (long)tiltErr,
+               (long)panU, (long)tiltU,
+               status);
+ 
+        tick++;
+        delay_cycles(32000000UL * TRACK_TICK_MS / 1000UL);  // ~TRACK_TICK_MS at 32 MHz
     }
 }
 
-/* ADC interrupt */
+// int main(void)
+// {
+//     SYSCFG_DL_init();
+//     NVIC_EnableIRQ(ADC12_0_INST_INT_IRQN);
+
+//     delay_cycles(3200000);   // ~100 ms boot delay for adapter
+
+//     // start at center
+//     servoMovePan(PAN_POS_CENTER);
+//     servoMoveTilt(TILT_POS_CENTER);
+//     delayServoSettle();
+
+//     while (1)
+//     {
+//         ScanResult scan = runScan();
+
+//         // if (!scan.beaconFound) continue;
+
+//         // servoMovePan(scan.bestPanPos);
+//         // servoMoveTilt(scan.bestTiltPos);
+//         // delayServoSettle();
+
+//         // if (fineTrack())
+//         // {
+//         //     while (fineTrack()) { /* keep tracking */ }
+//         // }
+//     }
+// }
+
 void ADC12_0_INST_IRQHandler(void)
 {
     switch (DL_ADC12_getPendingInterrupt(ADC12_0_INST))
