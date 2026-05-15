@@ -77,31 +77,31 @@ extern "C" {
 
 
 
-/* Defines for UART_0 */
-#define UART_0_INST                                                        UART0
-#define UART_0_INST_FREQUENCY                                           32000000
-#define UART_0_INST_IRQHandler                                  UART0_IRQHandler
-#define UART_0_INST_INT_IRQN                                      UART0_INT_IRQn
-#define GPIO_UART_0_RX_PORT                                                GPIOA
-#define GPIO_UART_0_TX_PORT                                                GPIOA
-#define GPIO_UART_0_RX_PIN                                         DL_GPIO_PIN_1
-#define GPIO_UART_0_TX_PIN                                        DL_GPIO_PIN_10
-#define GPIO_UART_0_IOMUX_RX                                      (IOMUX_PINCM2)
-#define GPIO_UART_0_IOMUX_TX                                     (IOMUX_PINCM21)
-#define GPIO_UART_0_IOMUX_RX_FUNC                       IOMUX_PINCM2_PF_UART0_RX
-#define GPIO_UART_0_IOMUX_TX_FUNC                      IOMUX_PINCM21_PF_UART0_TX
-#define UART_0_BAUD_RATE                                               (1000000)
-#define UART_0_IBRD_32_MHZ_1000000_BAUD                                      (2)
-#define UART_0_FBRD_32_MHZ_1000000_BAUD                                      (0)
+/* Defines for UART_1 */
+#define UART_1_INST                                                        UART1
+#define UART_1_INST_FREQUENCY                                           32000000
+#define UART_1_INST_IRQHandler                                  UART1_IRQHandler
+#define UART_1_INST_INT_IRQN                                      UART1_INT_IRQn
+#define GPIO_UART_1_RX_PORT                                                GPIOA
+#define GPIO_UART_1_TX_PORT                                                GPIOA
+#define GPIO_UART_1_RX_PIN                                        DL_GPIO_PIN_18
+#define GPIO_UART_1_TX_PIN                                         DL_GPIO_PIN_8
+#define GPIO_UART_1_IOMUX_RX                                     (IOMUX_PINCM40)
+#define GPIO_UART_1_IOMUX_TX                                     (IOMUX_PINCM19)
+#define GPIO_UART_1_IOMUX_RX_FUNC                      IOMUX_PINCM40_PF_UART1_RX
+#define GPIO_UART_1_IOMUX_TX_FUNC                      IOMUX_PINCM19_PF_UART1_TX
+#define UART_1_BAUD_RATE                                               (1000000)
+#define UART_1_IBRD_32_MHZ_1000000_BAUD                                      (2)
+#define UART_1_FBRD_32_MHZ_1000000_BAUD                                      (0)
 
 
 
 
 
 /* Defines for ADC12_0 */
-#define ADC12_0_INST                                                        ADC1
-#define ADC12_0_INST_IRQHandler                                  ADC1_IRQHandler
-#define ADC12_0_INST_INT_IRQN                                    (ADC1_INT_IRQn)
+#define ADC12_0_INST                                                        ADC0
+#define ADC12_0_INST_IRQHandler                                  ADC0_IRQHandler
+#define ADC12_0_INST_INT_IRQN                                    (ADC0_INT_IRQn)
 #define ADC12_0_ADCMEM_0                                      DL_ADC12_MEM_IDX_0
 #define ADC12_0_ADCMEM_0_REF                     DL_ADC12_REFERENCE_VOLTAGE_VDDA
 #define ADC12_0_ADCMEM_0_REF_VOLTAGE_V                                       3.3
@@ -114,36 +114,23 @@ extern "C" {
 #define ADC12_0_ADCMEM_3                                      DL_ADC12_MEM_IDX_3
 #define ADC12_0_ADCMEM_3_REF                     DL_ADC12_REFERENCE_VOLTAGE_VDDA
 #define ADC12_0_ADCMEM_3_REF_VOLTAGE_V                                       3.3
-#define GPIO_ADC12_0_C6_PORT                                               GPIOB
-#define GPIO_ADC12_0_C6_PIN                                       DL_GPIO_PIN_19
-#define GPIO_ADC12_0_IOMUX_C6                                    (IOMUX_PINCM45)
-#define GPIO_ADC12_0_IOMUX_C6_FUNC                (IOMUX_PINCM45_PF_UNCONNECTED)
+#define GPIO_ADC12_0_C0_PORT                                               GPIOA
+#define GPIO_ADC12_0_C0_PIN                                       DL_GPIO_PIN_27
+#define GPIO_ADC12_0_IOMUX_C0                                    (IOMUX_PINCM60)
+#define GPIO_ADC12_0_IOMUX_C0_FUNC                (IOMUX_PINCM60_PF_UNCONNECTED)
 #define GPIO_ADC12_0_C5_PORT                                               GPIOB
-#define GPIO_ADC12_0_C5_PIN                                       DL_GPIO_PIN_18
-#define GPIO_ADC12_0_IOMUX_C5                                    (IOMUX_PINCM44)
-#define GPIO_ADC12_0_IOMUX_C5_FUNC                (IOMUX_PINCM44_PF_UNCONNECTED)
+#define GPIO_ADC12_0_C5_PIN                                       DL_GPIO_PIN_24
+#define GPIO_ADC12_0_IOMUX_C5                                    (IOMUX_PINCM52)
+#define GPIO_ADC12_0_IOMUX_C5_FUNC                (IOMUX_PINCM52_PF_UNCONNECTED)
 #define GPIO_ADC12_0_C2_PORT                                               GPIOA
-#define GPIO_ADC12_0_C2_PIN                                       DL_GPIO_PIN_17
-#define GPIO_ADC12_0_IOMUX_C2                                    (IOMUX_PINCM39)
-#define GPIO_ADC12_0_IOMUX_C2_FUNC                (IOMUX_PINCM39_PF_UNCONNECTED)
+#define GPIO_ADC12_0_C2_PIN                                       DL_GPIO_PIN_25
+#define GPIO_ADC12_0_IOMUX_C2                                    (IOMUX_PINCM55)
+#define GPIO_ADC12_0_IOMUX_C2_FUNC                (IOMUX_PINCM55_PF_UNCONNECTED)
 #define GPIO_ADC12_0_C3_PORT                                               GPIOA
-#define GPIO_ADC12_0_C3_PIN                                       DL_GPIO_PIN_18
-#define GPIO_ADC12_0_IOMUX_C3                                    (IOMUX_PINCM40)
-#define GPIO_ADC12_0_IOMUX_C3_FUNC                (IOMUX_PINCM40_PF_UNCONNECTED)
+#define GPIO_ADC12_0_C3_PIN                                       DL_GPIO_PIN_24
+#define GPIO_ADC12_0_IOMUX_C3                                    (IOMUX_PINCM54)
+#define GPIO_ADC12_0_IOMUX_C3_FUNC                (IOMUX_PINCM54_PF_UNCONNECTED)
 
-
-/* Defines for VREF */
-#define VREF_VOLTAGE_MV                                                     2500
-
-
-
-
-/* Port definition for Pin Group GPIO_GRP_0 */
-#define GPIO_GRP_0_PORT                                                  (GPIOA)
-
-/* Defines for USER_LED_1: GPIOA.0 with pinCMx 1 on package pin 33 */
-#define GPIO_GRP_0_USER_LED_1_PIN                                (DL_GPIO_PIN_0)
-#define GPIO_GRP_0_USER_LED_1_IOMUX                               (IOMUX_PINCM1)
 
 
 /* clang-format on */
@@ -152,10 +139,8 @@ void SYSCFG_DL_init(void);
 void SYSCFG_DL_initPower(void);
 void SYSCFG_DL_GPIO_init(void);
 void SYSCFG_DL_SYSCTL_init(void);
-void SYSCFG_DL_UART_0_init(void);
+void SYSCFG_DL_UART_1_init(void);
 void SYSCFG_DL_ADC12_0_init(void);
-void SYSCFG_DL_VREF_init(void);
-
 
 bool SYSCFG_DL_saveConfiguration(void);
 bool SYSCFG_DL_restoreConfiguration(void);
