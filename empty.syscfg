@@ -11,69 +11,56 @@
  */
 const ADC12  = scripting.addModule("/ti/driverlib/ADC12", {}, false);
 const ADC121 = ADC12.addInstance();
-const GPIO   = scripting.addModule("/ti/driverlib/GPIO", {}, false);
-const GPIO1  = GPIO.addInstance();
 const SYSCTL = scripting.addModule("/ti/driverlib/SYSCTL");
 const UART   = scripting.addModule("/ti/driverlib/UART", {}, false);
 const UART1  = UART.addInstance();
-const VREF   = scripting.addModule("/ti/driverlib/VREF");
 
 /**
  * Write custom configuration values to the imported modules.
  */
-ADC121.$name                 = "ADC12_0";
-ADC121.samplingOperationMode = "sequence";
-ADC121.endAdd                = 3;
-ADC121.adcMem2chansel        = "DL_ADC12_INPUT_CHAN_2";
-ADC121.adcMem3chansel        = "DL_ADC12_INPUT_CHAN_3";
-ADC121.enabledInterrupts     = ["DL_ADC12_INTERRUPT_MEM3_RESULT_LOADED"];
-ADC121.adcMem0chansel        = "DL_ADC12_INPUT_CHAN_6";
-ADC121.adcMem1chansel        = "DL_ADC12_INPUT_CHAN_5";
-ADC121.adcPin2Config.$name   = "ti_driverlib_gpio_GPIOPinGeneric3";
-ADC121.adcPin3Config.$name   = "ti_driverlib_gpio_GPIOPinGeneric4";
-ADC121.adcPin6Config.$name   = "ti_driverlib_gpio_GPIOPinGeneric0";
-ADC121.adcPin5Config.$name   = "ti_driverlib_gpio_GPIOPinGeneric2";
+ADC121.$name                      = "ADC12_0";
+ADC121.adcMem2chansel             = "DL_ADC12_INPUT_CHAN_2";
+ADC121.adcMem3chansel             = "DL_ADC12_INPUT_CHAN_3";
+ADC121.endAdd                     = 3;
+ADC121.sampleTime0                = "1 ms";
+ADC121.enabledInterrupts          = ["DL_ADC12_INTERRUPT_MEM3_RESULT_LOADED"];
+ADC121.samplingOperationMode      = "sequence";
+ADC121.sampleTime1                = "1 ms";
+ADC121.adcMem1chansel             = "DL_ADC12_INPUT_CHAN_5";
+ADC121.adcPin0Config.$name        = "ti_driverlib_gpio_GPIOPinGeneric0";
+ADC121.adcPin0Config.enableConfig = true;
+ADC121.adcPin2Config.$name        = "ti_driverlib_gpio_GPIOPinGeneric4";
+ADC121.adcPin2Config.enableConfig = true;
+ADC121.adcPin3Config.$name        = "ti_driverlib_gpio_GPIOPinGeneric5";
+ADC121.adcPin3Config.enableConfig = true;
+ADC121.adcPin5Config.$name        = "ti_driverlib_gpio_GPIOPinGeneric1";
 
 const Board = scripting.addModule("/ti/driverlib/Board", {}, false);
 
-GPIO1.$name                               = "GPIO_GRP_0";
-GPIO1.associatedPins[0].launchPadShortcut = "LED1En";
-GPIO1.associatedPins[0].$name             = "USER_LED_1";
-
 SYSCTL.forceDefaultClkConfig = true;
 
-UART1.$name                    = "UART_0";
-UART1.enableFIFO               = true;
-UART1.enableDMARX              = false;
-UART1.enableDMATX              = false;
-UART1.rxFifoThreshold          = "DL_UART_RX_FIFO_LEVEL_ONE_ENTRY";
+UART1.$name                    = "UART_1";
 UART1.targetBaudRate           = 1000000;
-UART1.enableInternalLoopback   = false;
-UART1.txPinConfig.$name        = "ti_driverlib_gpio_GPIOPinGeneric5";
+UART1.enableFIFO               = true;
+UART1.peripheral.$assign       = "UART1";
+UART1.peripheral.txPin.$assign = "PA8";
+UART1.txPinConfig.$name        = "ti_driverlib_gpio_GPIOPinGeneric2";
 UART1.txPinConfig.enableConfig = true;
-UART1.rxPinConfig.$name        = "ti_driverlib_gpio_GPIOPinGeneric6";
+UART1.rxPinConfig.$name        = "ti_driverlib_gpio_GPIOPinGeneric3";
 UART1.rxPinConfig.enableConfig = true;
-
-VREF.basicIntVolt           = "DL_VREF_BUFCONFIG_OUTPUT_2_5V";
-VREF.vrefPosPinConfig.$name = "ti_driverlib_gpio_GPIOPinGeneric1";
 
 /**
  * Pinmux solution for unlocked pins/peripherals. This ensures that minor changes to the automatic solver in a future
  * version of the tool will not impact the pinmux you originally saw.  These lines can be completely deleted in order to
  * re-solve from scratch.
  */
-ADC121.peripheral.$suggestSolution           = "ADC1";
-ADC121.peripheral.adcPin6.$suggestSolution   = "PB19";
-ADC121.peripheral.adcPin5.$suggestSolution   = "PB18";
-ADC121.peripheral.adcPin2.$suggestSolution   = "PA17";
-ADC121.peripheral.adcPin3.$suggestSolution   = "PA18";
-Board.peripheral.$suggestSolution            = "DEBUGSS";
-Board.peripheral.swclkPin.$suggestSolution   = "PA20";
-Board.peripheral.swdioPin.$suggestSolution   = "PA19";
-GPIO1.associatedPins[0].pin.$suggestSolution = "PA0";
-SYSCTL.peripheral.$suggestSolution           = "SYSCTL";
-UART1.peripheral.$suggestSolution            = "UART0";
-UART1.peripheral.rxPin.$suggestSolution      = "PA1";
-UART1.peripheral.txPin.$suggestSolution      = "PA10";
-VREF.peripheral.$suggestSolution             = "VREF";
-VREF.peripheral.vrefPosPin.$suggestSolution  = "PA23";
+ADC121.peripheral.$suggestSolution         = "ADC0";
+ADC121.peripheral.adcPin0.$suggestSolution = "PA27";
+ADC121.peripheral.adcPin5.$suggestSolution = "PB24";
+ADC121.peripheral.adcPin2.$suggestSolution = "PA25";
+ADC121.peripheral.adcPin3.$suggestSolution = "PA24";
+Board.peripheral.$suggestSolution          = "DEBUGSS";
+Board.peripheral.swclkPin.$suggestSolution = "PA20";
+Board.peripheral.swdioPin.$suggestSolution = "PA19";
+SYSCTL.peripheral.$suggestSolution         = "SYSCTL";
+UART1.peripheral.rxPin.$suggestSolution    = "PA18";
